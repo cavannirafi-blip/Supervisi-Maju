@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GEMILANG - Sistem Penilaian Supervisi Pembelajaran</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-5 right-5 z-50 transform translate-x-full transition-transform duration-300 bg-emerald-600 text-white px-6 py-3 rounded-xl shadow-lg flex items-center space-x-3">
+        <i class="fa-solid fa-circle-check text-xl"></i>
+        <div>
+            <p class="font-semibold text-sm" id="toast-title">Berhasil!</p>
+            <p class="text-xs text-emerald-100" id="toast-message">Aksi berhasil dilakukan.</p>
+        </div>
+    </div>
+
+    <!-- Header / Navbar -->
+    <header class="bg-indigo-900 text-white shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-700 p-2.5 rounded-xl text-amber-400 font-bold shadow-inner">
+                    <i class="fa-solid fa-clipboard-check text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight tracking-wide">GEMILANG</h1>
+                    <p class="text-xs text-indigo-300">Supervisi Pembelajaran Terpadu</p>
+                </div>
+            </div>
+
+            <!-- Role Switcher & User Profile -->
+            <div class="flex items-center space-x-4">
+                <div class="hidden md:flex flex-col text-right">
+                    <span class="text-xs text-indigo-300">Simulasi Peran:</span>
+                    <span id="current-role-label" class="font-semibold text-amber-300 text-sm">Supervisor</span>
+                </div>
+                <div class="relative">
+                    <select id="role-selector" onchange="switchRole(this.value)" class="bg-indigo-800 text-white text-sm font-medium border border-indigo-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer">
+                        <option value="supervisor">Role: Supervisor (Penilai)</option>
+                        <option value="guru">Role: Guru (Yang Dinilai)</option>
+                        <option value="kepala">Role: Kepala Sekolah</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Role Banner Notification -->
+        <div id="role-banner" class="mb-6 bg-indigo-50 border border-indigo-200 text-indigo-800 px-4 py-3 rounded-xl flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-circle-info text-indigo-600 text-lg"></i>
+                <span id="role-banner-text" class="text-sm font-medium">Anda sedang mengakses sebagai <strong>Supervisor</strong>. Anda dapat melakukan penilaian langsung terhadap instrumen pembelajaran guru.</span>
+            </div>
+            <button onclick="resetData()" class="text-xs bg-indigo-200 hover:bg-indigo-300 text-indigo-800 px-3 py-1.5 rounded-lg transition font-medium">Reset Data Demo</button>
+        </div>
+
+        <!-- NAVIGATION TABS -->
+        <div class="flex border-b border-slate-200 mb-6 space-x-6 overflow-x-auto">
+            <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn pb-3 text-sm font-semibold text-indigo-600 border-b-2 border-indigo-600 flex items-center space-x-2 whitespace-nowrap">
+                <i class="fa-solid fa-chart-pie"></i><span>Dashboard & Ringkasan</span>
+            </button>
+            <button onclick="switchTab('penilaian')" id="tab-penilaian" class="tab-btn pb-3 text-sm font-medium text-slate-500 hover:text-indigo-600 flex items-center space-x-2 whitespace-nowrap">
+                <i class="fa-solid fa-file-pen"></i><span>Instrumen Penilaian</span>
+            </button>
+            <button onclick="switchTab('riwayat')" id="tab-riwayat" class="tab-btn pb-3 text-sm font-medium text-slate-500 hover:text-indigo-600 flex items-center space-x-2 whitespace-nowrap">
+                <i class="fa-solid fa-clock-rotate-left"></i><span>Riwayat & Laporan</span>
+            </button>
+        </div>
+
+        <!-- TAB CONTENT: DASHBOARD -->
+        <div id="content-dashboard" class="space-y-6">
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-4">
+                    <div class="bg-blue-100 text-blue-600 p-4 rounded-xl text-xl font-bold">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-500 font-medium">Total Guru Dinilai</p>
+                        <h3 id="stat-total-guru" class="text-2xl font-bold text-slate-800">5</h3>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-4">
+                    <div class="bg-emerald-100 text-emerald-600 p-4 rounded-xl text-xl font-bold">
+                        <i class="fa-solid fa-clipboard-check"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-500 font-medium">Supervisi Selesai</p>
+                        <h3 id="stat-selesai" class="text-2xl font-bold text-slate-800">3</h3>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-4">
+                    <div class="bg-amber-100 text-amber-600 p-4 rounded-xl text-xl font-bold">
+                        <i class="fa-solid fa-hourglass-half"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-500 font-medium">Belum Disupervisi</p>
+                        <h3 id="stat-belum" class="text-2xl font-bold text-slate-800">2</h3>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-4">
+                    <div class="bg-purple-100 text-purple-600 p-4 rounded-xl text-xl font-bold">
+                        <i class="fa-solid fa-award"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-500 font-medium">Rata-Rata Nilai</p>
+                        <h3 id="stat-avg" class="text-2xl font-bold text-slate-800">86.5</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Role-Specific Welcome Card -->
+            <div class="bg-gradient-to-r from-indigo-800 to-indigo-900 text-white rounded-2xl p-6 shadow-md flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+                <div>
+                    <h2 id="welcome-title" class="text-xl font-bold mb-1">Selamat Datang di Portal Supervisi</h2>
+                    <p id="welcome-desc" class="text-indigo-200 text-sm max-w-2xl">Kelola instrumen penilaian pembelajaran secara digital, transparan, dan terukur sesuai standar pendidikan nasional.</p>
+                </div>
+                <button onclick="switchTab('penilaian')" id="cta-btn" class="bg-amber-400 hover:bg-amber-500 text-indigo-950 px-5 py-2.5 rounded-xl font-semibold text-sm transition shadow flex items-center space-x-2">
+                    <i class="fa-solid fa-plus"></i><span>Mulai Penilaian Baru</span>
+                </button>
+            </div>
+
+            <!-- Recent Activity Table -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-5 border-b border-slate-200 flex justify-between items-center">
+                    <h3 class="font-bold text-slate-800 text-base">Daftar Jadwal & Rekap Supervisi Terbaru</h3>
+                    <button onclick="switchTab('riwayat')" class="text-xs text-indigo-600 hover:underline font-semibold">Lihat Semua</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-500 border-b border-slate-200 text-xs uppercase tracking-wider">
+                                <th class="p-4 font-semibold">Nama Guru & Mata Pelajaran</th>
+                                <th class="p-4 font-semibold">Supervisor</th>
+                                <th class="p-4 font-semibold">Tanggal</th>
+                                <th class="p-4 font-semibold">Nilai Akhir</th>
+                                <th class="p-4 font-semibold">Status</th>
+                                <th class="p-4 font-semibold text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashboard-table-body" class="divide-y divide-slate-100">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB CONTENT: INSTRUMEN PENILAIAN (FORM) -->
+        <div id="content-penilaian" class="hidden space-y-6">
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+                <div class="border-b border-slate-200 pb-4 mb-6">
+                    <h2 class="text-xl font-bold text-slate-800">Instrumen Penilaian Pelaksanaan Pembelajaran</h2>
+                    <p class="text-sm text-slate-500 mt-1">Isi formulir penilaian di bawah ini berdasarkan observasi langsung atau dokumen perangkat ajar guru.</p>
+                </div>
+
+                <form id="supervision-form" onsubmit="submitSupervision(event)" class="space-y-8">
+                    <!-- Informasi Umum -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Pilih Guru yang Dinilai *</label>
+                            <select id="form-guru" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="">-- Pilih Guru --</option>
+                                <option value="Budi Santoso, S.Pd">Budi Santoso, S.Pd (Matematika)</option>
+                                <option value="Siti Aminah, M.Pd">Siti Aminah, M.Pd (Bahasa Indonesia)</option>
+                                <option value="Ahmad Fauzi, S.Si">Ahmad Fauzi, S.Si (Fisika)</option>
+                                <option value="Dewi Lestari, S.Pd">Dewi Lestari, S.Pd (Bahasa Inggris)</option>
+                                <option value="Eko Prasetyo, S.Kom">Eko Prasetyo, S.Kom (Informatika)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Nama Supervisor / Penilai *</label>
+                            <input type="text" id="form-supervisor" required placeholder="Cth: Dr. H. Mulyadi, M.Pd" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Tanggal Observasi *</label>
+                            <input type="date" id="form-tanggal" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+
+                    <!-- Rubrik Penilaian -->
+                    <div class="space-y-6">
+                        <h3 class="font-bold text-slate-800 text-base border-l-4 border-indigo-600 pl-3">Aspek Penilaian (Skala 1 - 4)</h3>
+                        <p class="text-xs text-slate-500">Keterangan: 1 = Kurang, 2 = Cukup, 3 = Baik, 4 = Sangat Baik</p>
+
+                        <!-- Kategori 1: Perencanaan Pembelajaran -->
+                        <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
+                            <h4 class="font-semibold text-slate-700 text-sm">I. Perencanaan Pembelajaran (Modul Ajar / RPP)</h4>
+                            
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">1. Kejelasan perumusan tujuan pembelajaran sesuai dengan kurikulum.</label>
+                                    <select name="score_1" class="score-input w-full md:w-1/3 bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                                        <option value="4">4 - Sangat Baik (Sesuai & Komprehensif)</option>
+                                        <option value="3">3 - Baik (Sesuai)</option>
+                                        <option value="2">2 - Cukup (Kurang Lengkap)</option>
+                                        <option value="1">1 - Kurang (Tidak Sesuai)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">2. Pemilihan materi pembelajaran relevan dengan karakteristik peserta didik.</label>
+                                    <select name="score_2" class="score-input w-full md:w-1/3 bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                                        <option value="4">4 - Sangat Baik</option>
+                                        <option value="3" selected>3 - Baik</option>
+                                        <option value="2">2 - Cukup</option>
+                                        <option value="1">1 - Kurang</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Kategori 2: Pelaksanaan Pembelajaran -->
+                        <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
+                            <h4 class="font-semibold text-slate-700 text-sm">II. Pelaksanaan Kegiatan Pembelajaran di Kelas</h4>
+                            
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">3. Penguasaan materi pembelajaran dan kemampuan mengaitkan dengan konteks nyata.</label>
+                                    <select name="score_3" class="score-input w-full md:w-1/3 bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                                        <option value="4">4 - Sangat Baik</option>
+                                        <option value="3" selected>3 - Baik</option>
+                                        <option value="2">2 - Cukup</option>
+                                        <option value="1">1 - Kurang</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">4. Penerapan strategi / model pembelajaran aktif dan kolaboratif.</label>
+                                    <select name="score_4" class="score-input w-full md:w-1/3 bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                                        <option value="4">4 - Sangat Baik</option>
+                                        <option value="3" selected>3 - Baik</option>
+                                        <option value="2">2 - Cukup</option>
+                                        <option value="1">1 - Kurang</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">5. Pemanfaatan media dan sumber belajar berbasis teknologi / TPACK.</label>
+                                    <select name="score_5" class="score-input w-full md:w-1/3 bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                                        <option value="4">4 - Sangat Baik</option>
+                                        <option value="3" selected>3 - Baik</option>
+                                        <option value="2">2 - Cukup</option>
+                                        <option value="1">1 - Kurang</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Kategori 3: Penilaian Hasil Belajar -->
+                        <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
+                            <h4 class="font-semibold text-slate-700 text-sm">III. Penilaian & Tindak Lanjut</h4>
+                            
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">6. Pelaksanaan penilaian otentik (formatif & sumatif) secara objektif.</label>
+                                    <select name="score_6" class="score-input w-full md:w-1/3 bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                                        <option value="4">4 - Sangat Baik</option>
+                                        <option value="3" selected>3 - Baik</option>
+                                        <option value="2">2 - Cukup</option>
+                                        <option value="1">1 - Kurang</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Catatan & Rekomendasi -->
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Catatan Pembinaan & Rekomendasi</label>
+                            <textarea id="form-catatan" rows="3" placeholder="Tuliskan catatan konstruktif untuk pengembangan profesional guru..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">Secara keseluruhan proses pembelajaran sudah sangat interaktif. Tingkatkan variasi penggunaan media digital interaktif pada pertemuan selanjutnya.</textarea>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="flex justify-end space-x-3 pt-4 border-t border-slate-200">
+                        <button type="button" onclick="switchTab('dashboard')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-5 py-2.5 rounded-xl font-semibold text-sm transition">Batal</button>
+                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition shadow">Simpan & Terbitkan Penilaian</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- TAB CONTENT: RIWAYAT & LAPORAN -->
+        <div id="content-riwayat" class="hidden space-y-6">
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-200 pb-4 mb-6 space-y-3 md:space-y-0">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800">Arsip Laporan Supervisi Pembelajaran</h2>
+                        <p class="text-sm text-slate-500 mt-1">Semua rekapitulasi penilaian supervisor yang tersimpan dalam sistem.</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <input type="text" id="search-input" oninput="renderTable()" placeholder="Cari nama guru..." class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-500 border-b border-slate-200 text-xs uppercase tracking-wider">
+                                <th class="p-4 font-semibold">Nama Guru</th>
+                                <th class="p-4 font-semibold">Mata Pelajaran</th>
+                                <th class="p-4 font-semibold">Supervisor</th>
+                                <th class="p-4 font-semibold">Tanggal</th>
+                                <th class="p-4 font-semibold">Nilai Akhir</th>
+                                <th class="p-4 font-semibold">Predikat</th>
+                                <th class="p-4 font-semibold text-center">Detail</th>
+                            </tr>
+                        </thead>
+                        <tbody id="full-table-body" class="divide-y divide-slate-100">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal Detail Laporan -->
+    <div id="detail-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-700 text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div id="modal-content" class="space-y-6">
+                <!-- Content populated dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 mt-auto py-6">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
+            &copy; 2026 GEMILANG - Sistem Informasi Penilaian Supervisi Pembelajaran. Dirancang untuk Guru, Kepala Sekolah, dan Supervisor Profesional.
+        </div>
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Initial Mock Database State
+        let supervisionData = [
+            {
+                id: 1,
+                guru: "Budi Santoso, S.Pd",
+                mapel: "Matematika",
+                supervisor: "Dr. H. Mulyadi, M.Pd",
+                tanggal: "2026-05-10",
+                scores: [4, 3, 4, 3, 4, 3], // 6 items
+                totalScore: 87.5,
+                predicate: "Sangat Baik",
+                catatan: "Perencanaan dan penguasaan kelas sangat baik. Pertahankan penggunaan media interaktif.",
+                status: "Selesai"
+            },
+            {
+                id: 2,
+                guru: "Siti Aminah, M.Pd",
+                mapel: "Bahasa Indonesia",
+                supervisor: "Dra. Hj. Nurul Hidayah",
+                tanggal: "2026-05-12",
+                scores: [3, 3, 3, 4, 3, 3],
+                totalScore: 79.2,
+                predicate: "Baik",
+                catatan: "Penyampaian materi runtut, namun perlu ditingkatkan asesmen formatif saat kelompok aktif.",
+                status: "Selesai"
+            },
+            {
+                id: 3,
+                guru: "Ahmad Fauzi, S.Si",
+                mapel: "Fisika",
+                supervisor: "Dr. H. Mulyadi, M.Pd",
+                tanggal: "2026-05-15",
+                scores: [4, 4, 4, 4, 3, 4],
+                totalScore: 95.8,
+                predicate: "Sangat Baik",
+                catatan: "Praktikum laboratorium berjalan sangat kondusif dan menarik siswa bereksperimen.",
+                status: "Selesai"
+            },
+            {
+                id: 4,
+                guru: "Dewi Lestari, S.Pd",
+                mapel: "Bahasa Inggris",
+                supervisor: "Dra. Hj. Nurul Hidayah",
+                tanggal: "2026-05-20",
+                scores: [0, 0, 0, 0, 0, 0],
+                totalScore: 0,
+                predicate: "Belum Dinilai",
+                catatan: "Jadwal observasi minggu depan.",
+                status: "Belum"
+            },
+            {
+                id: 5,
+                guru: "Eko Prasetyo, S.Kom",
+                mapel: "Informatika",
+                supervisor: "Dr. H. Mulyadi, M.Pd",
+                tanggal: "2026-05-22",
+                scores: [0, 0, 0, 0, 0, 0],
+                totalScore: 0,
+                predicate: "Belum Dinilai",
+                catatan: "Menunggu kelengkapan Modul Ajar semester ini.",
+                status: "Belum"
+            }
+        ];
+
+        let currentRole = 'supervisor';
+
+        // Set default date to today in form
+        document.getElementById('form-tanggal').valueAsDate = new Date();
+
+        // Role Switcher Handler
+        function switchRole(role) {
+            currentRole = role;
+            const label = document.getElementById('current-role-label');
+            const bannerText = document.getElementById('role-banner-text');
+            const tabPenilaian = document.getElementById('tab-penilaian');
+            const welcomeTitle = document.getElementById('welcome-title');
+            const welcomeDesc = document.getElementById('welcome-desc');
+            const ctaBtn = document.getElementById('cta-btn');
+
+            if (role === 'supervisor') {
+                label.innerText = 'Supervisor';
+                bannerText.innerHTML = 'Anda sedang mengakses sebagai <strong>Supervisor (Penilai)</strong>. Anda dapat mengisi instrumen penilaian dan memberikan catatan pembinaan.';
+                tabPenilaian.style.display = 'flex';
+                welcomeTitle.innerText = 'Dashboard Supervisor';
+                welcomeDesc.innerText = 'Lakukan observasi dan penilaian kinerja guru secara objektif menggunakan instrumen baku.';
+                ctaBtn.style.display = 'flex';
+            } else if (role === 'guru') {
+                label.innerText = 'Guru (Peserta)';
+                bannerText.innerHTML = 'Anda sedang mengakses sebagai <strong>Guru</strong>. Anda dapat melihat hasil supervisi diri dan catatan rekomendasi dari supervisor.';
+                tabPenilaian.style.display = 'none'; // Guru cannot fill assessment
+                welcomeTitle.innerText = 'Dashboard Guru';
+                welcomeDesc.innerText = 'Pantau hasil penilaian supervisi pembelajaran Anda, refleksikan catatan supervisor, dan tingkatkan kualitas mengajar.';
+                ctaBtn.style.display = 'none';
+                if(document.getElementById('content-penilaian').classList.contains('hidden') === false) {
+                    switchTab('dashboard');
+                }
+            } else if (role === 'kepala') {
+                label.innerText = 'Kepala Sekolah';
+                bannerText.innerHTML = 'Anda sedang mengakses sebagai <strong>Kepala Sekolah</strong>. Anda memiliki akses penuh rekapitulasi nilai seluruh guru di satuan pendidikan.';
+                tabPenilaian.style.display = 'flex';
+                welcomeTitle.innerText = 'Dashboard Kepala Sekolah';
+                welcomeDesc.innerText = 'Evaluasi performa guru sekolah secara komprehensif, pantau rekapitulasi, dan ambil kebijakan peningkatan mutu.';
+                ctaBtn.style.display = 'flex';
+            }
+
+            showToast('Peran Diubah', `Berhasil beralih ke mode ${label.innerText}`);
+        }
+
+        // Tab Switcher
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-indigo-600', 'text-indigo-600', 'font-semibold');
+                btn.classList.add('text-slate-500', 'font-medium');
+            });
+            const activeBtn = document.getElementById(`tab-${tabId}`);
+            if(activeBtn) {
+                activeBtn.classList.add('border-indigo-600', 'text-indigo-600', 'font-semibold');
+                activeBtn.classList.remove('text-slate-500', 'font-medium');
+            }
+
+            document.getElementById('content-dashboard').classList.add('hidden');
+            document.getElementById('content-penilaian').classList.add('hidden');
+            document.getElementById('content-riwayat').classList.add('hidden');
+
+            document.getElementById(`content-${tabId}`).classList.remove('hidden');
+            renderData();
+        }
+
+        // Render Dashboard Stats & Tables
+        function renderData() {
+            const completedCount = supervisionData.filter(s => s.status === 'Selesai').length;
+            const pendingCount = supervisionData.filter(s => s.status === 'Belum').length;
+            const scoresSum = supervisionData.filter(s => s.status === 'Selesai').reduce((acc, curr) => acc + curr.totalScore, 0);
+            const avgScore = completedCount > 0 ? (scoresSum / completedCount).toFixed(1) : 0;
+
+            document.getElementById('stat-total-guru').innerText = supervisionData.length;
+            document.getElementById('stat-selesai').innerText = completedCount;
+            document.getElementById('stat-belum').innerText = pendingCount;
+            document.getElementById('stat-avg').innerText = avgScore;
+
+            // Dashboard Table (Top 4)
+            const dashTableBody = document.getElementById('dashboard-table-body');
+            dashTableBody.innerHTML = '';
+            supervisionData.slice(0, 4).forEach(item => {
+                dashTableBody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="p-4 font-medium text-slate-800">
+                            ${item.guru}
+                            <div class="text-xs text-slate-500">${item.mapel}</div>
+                        </td>
+                        <td class="p-4 text-slate-600">${item.supervisor}</td>
+                        <td class="p-4 text-slate-600">${item.tanggal}</td>
+                        <td class="p-4 font-bold text-slate-800">${item.status === 'Selesai' ? item.totalScore : '-'}</td>
+                        <td class="p-4">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${item.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">
+                                ${item.status}
+                            </span>
+                        </td>
+                        <td class="p-4 text-center">
+                            <button onclick="viewDetail(${item.id})" class="text-indigo-600 hover:text-indigo-900 font-medium text-xs bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition">Detail</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            // Full History Table
+            const searchQuery = document.getElementById('search-input').value.toLowerCase();
+            const fullTableBody = document.getElementById('full-table-body');
+            fullTableBody.innerHTML = '';
+            
+            const filtered = supervisionData.filter(item => item.guru.toLowerCase().includes(searchQuery) || item.mapel.toLowerCase().includes(searchQuery));
+            
+            filtered.forEach(item => {
+                fullTableBody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="p-4 font-medium text-slate-800">${item.guru}</td>
+                        <td class="p-4 text-slate-600">${item.mapel}</td>
+                        <td class="p-4 text-slate-600">${item.supervisor}</td>
+                        <td class="p-4 text-slate-600">${item.tanggal}</td>
+                        <td class="p-4 font-bold text-slate-800">${item.status === 'Selesai' ? item.totalScore : '-'}</td>
+                        <td class="p-4">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${item.predicate === 'Sangat Baik' ? 'bg-purple-100 text-purple-700' : item.predicate === 'Baik' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}">
+                                ${item.predicate}
+                            </span>
+                        </td>
+                        <td class="p-4 text-center">
+                            <button onclick="viewDetail(${item.id})" class="text-indigo-600 hover:text-indigo-900 font-medium text-xs bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition">Lihat</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Submit Supervision Form
+        function submitSupervision(event) {
+            event.preventDefault();
+            
+            const guruSelect = document.getElementById('form-guru').value;
+            const supervisorName = document.getElementById('form-supervisor').value;
+            const tanggal = document.getElementById('form-tanggal').value;
+            const catatan = document.getElementById('form-catatan').value;
+
+            // Map subjects based on selected teacher
+            const mapelMap = {
+                "Budi Santoso, S.Pd": "Matematika",
+                "Siti Aminah, M.Pd": "Bahasa Indonesia",
+                "Ahmad Fauzi, S.Si": "Fisika",
+                "Dewi Lestari, S.Pd": "Bahasa Inggris",
+                "Eko Prasetyo, S.Kom": "Informatika"
+            };
+
+            const scores = Array.from(document.querySelectorAll('.score-input')).map(el => parseInt(el.value));
+            // Calculate score out of 100: (Sum / (Items * 4)) * 100
+            const sum = scores.reduce((a, b) => a + b, 0);
+            const totalScore = parseFloat(((sum / (scores.length * 4)) * 100).toFixed(1));
+
+            let predicate = "Cukup";
+            if (totalScore >= 85) predicate = "Sangat Baik";
+            else if (totalScore >= 75) predicate = "Baik";
+            else if (totalScore >= 60) predicate = "Cukup";
+            else predicate = "Kurang";
+
+            // Check if teacher already exists in data, update or push new
+            const existingIndex = supervisionData.findIndex(s => s.guru === guruSelect);
+            if (existingIndex !== -1) {
+                supervisionData[existingIndex].supervisor = supervisorName;
+                supervisionData[existingIndex].tanggal = tanggal;
+                supervisionData[existingIndex].scores = scores;
+                supervisionData[existingIndex].totalScore = totalScore;
+                supervisionData[existingIndex].predicate = predicate;
+                supervisionData[existingIndex].catatan = catatan;
+                supervisionData[existingIndex].status = "Selesai";
+            } else {
+                supervisionData.push({
+                    id: supervisionData.length + 1,
+                    guru: guruSelect,
+                    mapel: mapelMap[guruSelect] || "Umum",
+                    supervisor: supervisorName,
+                    tanggal: tanggal,
+                    scores: scores,
+                    totalScore: totalScore,
+                    predicate: predicate,
+                    catatan: catatan,
+                    status: "Selesai"
+                });
+            }
+
+            showToast("Berhasil Disimpan!", "Instrumen penilaian supervisi telah berhasil direkam.");
+            switchTab('dashboard');
+            document.getElementById('supervision-form').reset();
+            document.getElementById('form-tanggal').valueAsDate = new Date();
+        }
+
+        // View Detail Modal
+        function viewDetail(id) {
+            const item = supervisionData.find(s => s.id === id);
+            if (!item) return;
+
+            const modalContent = document.getElementById('modal-content');
+            modalContent.innerHTML = `
+                <div class="border-b border-slate-200 pb-4">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md">Detail Laporan Supervisi</span>
+                    <h3 class="text-xl font-bold text-slate-800 mt-2">${item.guru}</h3>
+                    <p class="text-sm text-slate-500">Mata Pelajaran: <span class="font-medium text-slate-700">${item.mapel}</span></p>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4 text-sm bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div>
+                        <span class="text-xs text-slate-500 block">Supervisor</span>
+                        <span class="font-semibold text-slate-800">${item.supervisor}</span>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-500 block">Tanggal Pelaksanaan</span>
+                        <span class="font-semibold text-slate-800">${item.tanggal}</span>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-500 block">Status Penilaian</span>
+                        <span class="font-semibold text-slate-800">${item.status}</span>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-500 block">Predikat Akhir</span>
+                        <span class="font-semibold text-indigo-600">${item.predicate} (${item.status === 'Selesai' ? item.totalScore : '0'} / 100)</span>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-slate-800 text-sm mb-2">Rincian Skor Aspek (Skala 1-4)</h4>
+                    <ul class="space-y-2 text-xs text-slate-600">
+                        <li class="flex justify-between bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                            <span>1. Kejelasan perumusan tujuan pembelajaran</span>
+                            <span class="font-bold">${item.status === 'Selesai' ? item.scores[0] : '-'}/4</span>
+                        </li>
+                        <li class="flex justify-between bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                            <span>2. Pemilihan materi pembelajaran relevan</span>
+                            <span class="font-bold">${item.status === 'Selesai' ? item.scores[1] : '-'}/4</span>
+                        </li>
+                        <li class="flex justify-between bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                            <span>3. Penguasaan materi & konteks nyata</span>
+                            <span class="font-bold">${item.status === 'Selesai' ? item.scores[2] : '-'}/4</span>
+                        </li>
+                        <li class="flex justify-between bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                            <span>4. Penerapan strategi pembelajaran aktif</span>
+                            <span class="font-bold">${item.status === 'Selesai' ? item.scores[3] : '-'}/4</span>
+                        </li>
+                        <li class="flex justify-between bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                            <span>5. Pemanfaatan media / TPACK</span>
+                            <span class="font-bold">${item.status === 'Selesai' ? item.scores[4] : '-'}/4</span>
+                        </li>
+                        <li class="flex justify-between bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                            <span>6. Penilaian otentik (formatif & sumatif)</span>
+                            <span class="font-bold">${item.status === 'Selesai' ? item.scores[5] : '-'}/4</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-slate-800 text-sm mb-1">Catatan & Rekomendasi Pembinaan</h4>
+                    <p class="text-xs text-slate-600 bg-amber-50 border border-amber-200 p-3 rounded-xl italic">"${item.catatan}"</p>
+                </div>
+
+                <div class="flex justify-end pt-4 border-t border-slate-200">
+                    <button onclick="closeModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-xs font-semibold transition">Tutup</button>
+                </div>
+            `;
+
+            document.getElementById('detail-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('detail-modal').classList.add('hidden');
+        }
+
+        // Toast Helper
+        function showToast(title, message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-title').innerText = title;
+            document.getElementById('toast-message').innerText = message;
+            toast.classList.remove('translate-x-full');
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+            }, 3500);
+        }
+
+        // Reset Demo Data
+        function resetData() {
+            location.reload();
+        }
+
+        // Initial render on load
+        window.onload = function() {
+            renderData();
+        };
+    </script>
+</body>
+</html>
